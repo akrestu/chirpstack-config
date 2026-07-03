@@ -42,6 +42,10 @@ services:
         content: |
           listener 1883
           allow_anonymous true
+          persistence true
+          persistence_location /mosquitto/data/
+          log_dest stdout
+      - mosquitto-data:/mosquitto/data
 
   postgres:
     image: postgres:16-alpine
@@ -63,3 +67,4 @@ volumes:
   chirpstack-data:
   postgresql-data:
   redis-data:
+  mosquitto-data:
