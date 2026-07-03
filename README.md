@@ -6,6 +6,8 @@ open-source LoRaWAN Network Server (v4) using [Docker Compose](https://docs.dock
 **Note:** Please use this `docker-compose.yml` file as a starting point for testing
 but keep in mind that for production usage it might need modifications. 
 
+For deploying this repository to Coolify specifically, see [COOLIFY_DEPLOYMENT.md](COOLIFY_DEPLOYMENT.md).
+
 ## Directory layout
 
 * `docker-compose.yml`: the docker-compose file containing the services
