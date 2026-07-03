@@ -14,11 +14,9 @@ services:
       - MQTT_BROKER_HOST=mosquitto
       - REDIS_HOST=redis
       - POSTGRESQL_HOST=postgres
+      - SERVICE_FQDN_CHIRPSTACK_8080
     labels:
       - "coolify.managed=true"
-    # Ini yang membuat Coolify generate subdomain otomatis + SSL untuk UI/API ChirpStack (port 8080)
-    environment:
-      - SERVICE_FQDN_CHIRPSTACK_8080
 
   chirpstack-gateway-bridge:
     image: chirpstack/chirpstack-gateway-bridge:4
