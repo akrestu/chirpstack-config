@@ -52,7 +52,24 @@ services:
     restart: unless-stopped
     volumes:
       - postgresql-data:/var/lib/postgresql/data
-      - ./configuration/postgresql/initdb:/docker-entrypoint-initdb.d
+      - type: bind
+        source: ./configuration/postgresql/initdb/000-init-chirpstack-role.sql
+        target: /docker-entrypoint-initdb.d/000-init-chirpstack-role.sql
+        content: |
+          CREATE ROLE chirpstack WITH LOGIN PASSWORD 'chirpstack';
+          ALTER ROLE chirpstack CREATEDB;
+          GRANT ALL PRIVILEGES ON DATABASE chirpstack TO chirpstack;
+      - type: bind
+        source: ./configuration/postgresql/initdb/001-chirpstack_extensions.sh
+        target: /docker-entrypoint-initdb.d/001-chirpstack_extensions.sh
+        content: |
+          #!/bin/bash
+          set -e
+
+          psql -v ON_ERROR_STOP=1 --username "$$POSTGRES_USER" --dbname="$$POSTGRES_DB" <<-EOSQL
+              create extension pg_trgm;
+              create extension hstore;
+          EOSQL
     environment:
       - POSTGRES_PASSWORD=root
       - POSTGRES_DB=chirpstack
