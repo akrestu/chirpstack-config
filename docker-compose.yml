@@ -36,7 +36,7 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - ./configuration/mosquitto:/mosquitto/config
+      - ./configuration/mosquitto/config:/mosquitto/config
 
   postgres:
     image: postgres:16-alpine
