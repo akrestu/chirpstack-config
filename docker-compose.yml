@@ -53,13 +53,6 @@ services:
     volumes:
       - postgresql-data:/var/lib/postgresql/data
       - type: bind
-        source: ./configuration/postgresql/initdb/000-init-chirpstack-role.sql
-        target: /docker-entrypoint-initdb.d/000-init-chirpstack-role.sql
-        content: |
-          CREATE ROLE chirpstack WITH LOGIN PASSWORD 'chirpstack';
-          ALTER ROLE chirpstack CREATEDB;
-          GRANT ALL PRIVILEGES ON DATABASE chirpstack TO chirpstack;
-      - type: bind
         source: ./configuration/postgresql/initdb/001-chirpstack_extensions.sh
         target: /docker-entrypoint-initdb.d/001-chirpstack_extensions.sh
         content: |
@@ -71,7 +64,8 @@ services:
               create extension hstore;
           EOSQL
     environment:
-      - POSTGRES_PASSWORD=root
+      - POSTGRES_USER=chirpstack
+      - POSTGRES_PASSWORD=chirpstack
       - POSTGRES_DB=chirpstack
 
   redis:
