@@ -3,6 +3,8 @@ services:
     image: chirpstack/chirpstack:4
     command: -c /etc/chirpstack
     restart: unless-stopped
+    expose:
+      - "8080"
     volumes:
       - ./configuration/chirpstack:/etc/chirpstack
       - chirpstack-data:/var/lib/chirpstack
