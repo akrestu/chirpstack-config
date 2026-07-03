@@ -36,7 +36,12 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - ./configuration/mosquitto/config:/mosquitto/config
+      - type: bind
+        source: ./configuration/mosquitto/config/mosquitto.conf
+        target: /mosquitto/config/mosquitto.conf
+        content: |
+          listener 1883
+          allow_anonymous true
 
   postgres:
     image: postgres:16-alpine
