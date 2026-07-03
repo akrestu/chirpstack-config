@@ -2,7 +2,7 @@ services:
   chirpstack:
     image: chirpstack/chirpstack:4
     command: -c /etc/chirpstack
-    restart: unless-stopped
+    restart: "no"
     volumes:
       - ./configuration/chirpstack:/etc/chirpstack
       - chirpstack-data:/var/lib/chirpstack
