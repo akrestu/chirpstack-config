@@ -143,6 +143,7 @@ Set these in Coolify → resource → **Environment Variables** (never commit th
 | Variable | Purpose |
 |---|---|
 | `CHIRPSTACK_API_SECRET` | JWT signing secret. Generate with `openssl rand -base64 32`. Deploy fails if unset. |
+| `MQTT_CHIRPSTACK_PASSWORD`, `MQTT_GATEWAY_BRIDGE_PASSWORD`, `MQTT_ORION_PASSWORD` | MQTT broker passwords, see [MQTT broker access](#mqtt-broker-access). Deploy fails if unset. |
 | `POSTGRES_PASSWORD` | Postgres password for the `chirpstack` role. Defaults to `chirpstack` only for backward compatibility. |
 
 `chirpstack.toml` reads both via ChirpStack's `$VAR` substitution.
@@ -166,14 +167,29 @@ bridge publishes to `as923/gateway/...` topics. If you change region, update
 **both** `enabled_regions` and the `INTEGRATION__MQTT__*_TOPIC_TEMPLATE` vars
 in `docker-compose.yml`, or uplinks will be silently dropped.
 
-## External MQTT access
+## MQTT broker access
 
-Mosquitto allows anonymous clients, so port 1883 is **not** published to the
-host. ChirpStack and the gateway bridge reach it over the internal Docker
-network. If an external system needs MQTT, enable authentication first
-(`allow_anonymous false` + `password_file`, ideally TLS on 8883) in both
-`configuration/mosquitto/config/mosquitto.conf` and the `content:` block in
-`docker-compose.yml`, and give ChirpStack and the bridge credentials.
+Mosquitto requires a username and password (`allow_anonymous false`) and is
+published on host port **1883** so external consumers (ORION) can subscribe.
+
+| User | Password env var (set in Coolify) | Permissions (`configuration/mosquitto/config/acl`) |
+|---|---|---|
+| `chirpstack` | `MQTT_CHIRPSTACK_PASSWORD` | read/write everything |
+| `gateway-bridge` | `MQTT_GATEWAY_BRIDGE_PASSWORD` | read/write `as923/gateway/#` |
+| `orion` | `MQTT_ORION_PASSWORD` | read-only `application/#` |
+
+Generate each password with `openssl rand -hex 24` (hex avoids characters that
+break URLs or Coolify interpolation). `init-users.sh` rebuilds the password
+file from these variables on every container start, so changing a password is
+just: update the env var in Coolify → Redeploy.
+
+ORION connects with `MQTT_HOST=<server-ip>`, `MQTT_PORT=1883`, user `orion`.
+Uplinks arrive on `application/<APPLICATION_ID>/device/<DEV_EUI>/event/up`.
+
+Hardening still recommended:
+- **Restrict 1883 to ORION's IP.** Docker-published ports bypass `ufw`, so
+  use the cloud provider firewall, or the `DOCKER-USER` iptables chain.
+- **TLS (8883)** if ORION connects over the public internet.
 
 ## Backups
 

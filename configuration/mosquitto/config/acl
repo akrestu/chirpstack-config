@@ -1,0 +1,12 @@
+# ChirpStack network server: full access (incl. $SYS for the healthcheck).
+user chirpstack
+topic readwrite #
+topic read $SYS/#
+
+# Gateway bridge: only gateway topics (region AS923-1 = "as923/" prefix).
+user gateway-bridge
+topic readwrite as923/gateway/#
+
+# ORION Fleet Intelligence: read-only access to application uplinks/events.
+user orion
+topic read application/#

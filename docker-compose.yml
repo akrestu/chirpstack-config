@@ -21,6 +21,7 @@ services:
       - POSTGRESQL_HOST=postgres
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-chirpstack}
       - CHIRPSTACK_API_SECRET=${CHIRPSTACK_API_SECRET:?Set CHIRPSTACK_API_SECRET (openssl rand -base64 32)}
+      - MQTT_CHIRPSTACK_PASSWORD=${MQTT_CHIRPSTACK_PASSWORD:?Set MQTT_CHIRPSTACK_PASSWORD (openssl rand -hex 24)}
       - SERVICE_FQDN_CHIRPSTACK_8080
 
   chirpstack-gateway-bridge:
@@ -32,6 +33,8 @@ services:
       - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
     environment:
       - INTEGRATION__MQTT__AUTH__GENERIC__SERVERS=tcp://mosquitto:1883
+      - INTEGRATION__MQTT__AUTH__GENERIC__USERNAME=gateway-bridge
+      - INTEGRATION__MQTT__AUTH__GENERIC__PASSWORD=${MQTT_GATEWAY_BRIDGE_PASSWORD:?Set MQTT_GATEWAY_BRIDGE_PASSWORD (openssl rand -hex 24)}
       # REGION: AS923-1 ("as923/" prefix), NOT AS923-2. Must match enabled_regions
       # in configuration/chirpstack/chirpstack.toml and the gateway's Channel Plan.
       - INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE=as923/gateway/{{ .GatewayID }}/event/{{ .EventType }}
@@ -44,13 +47,18 @@ services:
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
-    # 1883 is intentionally NOT published to the host: anonymous access is
-    # only safe on the internal Docker network. See COOLIFY_DEPLOYMENT.md
-    # ("External MQTT access") before exposing it.
-    expose:
-      - "1883"
+    # Authentication is required (allow_anonymous false). Users and their
+    # topic permissions are in configuration/mosquitto/config/acl; passwords
+    # come from the MQTT_*_PASSWORD env vars below (set them in Coolify).
+    entrypoint: ["sh", "/mosquitto/config/init-users.sh"]
+    ports:
+      - "1883:1883"
+    environment:
+      - MQTT_CHIRPSTACK_PASSWORD=${MQTT_CHIRPSTACK_PASSWORD:?Set MQTT_CHIRPSTACK_PASSWORD (openssl rand -hex 24)}
+      - MQTT_GATEWAY_BRIDGE_PASSWORD=${MQTT_GATEWAY_BRIDGE_PASSWORD:?Set MQTT_GATEWAY_BRIDGE_PASSWORD (openssl rand -hex 24)}
+      - MQTT_ORION_PASSWORD=${MQTT_ORION_PASSWORD:?Set MQTT_ORION_PASSWORD (openssl rand -hex 24)}
     healthcheck:
-      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/broker/uptime", "-C", "1", "-W", "3"]
+      test: ["CMD-SHELL", "mosquitto_sub -u chirpstack -P \"$$MQTT_CHIRPSTACK_PASSWORD\" -t '$$SYS/broker/uptime' -C 1 -W 3"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -61,10 +69,14 @@ services:
         # Keep in sync with configuration/mosquitto/config/mosquitto.conf
         content: |
           listener 1883
-          allow_anonymous true
+          allow_anonymous false
+          password_file /mosquitto/config/passwd
+          acl_file /mosquitto/config/acl
           persistence true
           persistence_location /mosquitto/data/
           log_dest stdout
+      - ./configuration/mosquitto/config/acl:/mosquitto/config/acl:ro
+      - ./configuration/mosquitto/config/init-users.sh:/mosquitto/config/init-users.sh:ro
       - mosquitto-data:/mosquitto/data
 
   postgres:
