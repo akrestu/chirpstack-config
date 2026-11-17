@@ -172,14 +172,14 @@ in `docker-compose.yml`, or uplinks will be silently dropped.
 Mosquitto requires a username and password (`allow_anonymous false`) and is
 published on host port **1883** so external consumers (ORION) can subscribe.
 
-| User | Password env var (set in Coolify) | Permissions (`configuration/mosquitto/config/acl`) |
+| User | Password env var (set in Coolify) | Permissions (`configuration/mosquitto/config/mosquitto.acl`) |
 |---|---|---|
 | `chirpstack` | `MQTT_CHIRPSTACK_PASSWORD` | read/write everything |
 | `gateway-bridge` | `MQTT_GATEWAY_BRIDGE_PASSWORD` | read/write `as923/gateway/#` |
 | `orion` | `MQTT_ORION_PASSWORD` | read-only `application/#` |
 
 Generate each password with `openssl rand -hex 24` (hex avoids characters that
-break URLs or Coolify interpolation). `init-users.sh` rebuilds the password
+break URLs or Coolify interpolation). `mosquitto-init.sh` rebuilds the password
 file from these variables on every container start, so changing a password is
 just: update the env var in Coolify → Redeploy.
 

@@ -48,9 +48,9 @@ services:
     image: eclipse-mosquitto:2
     restart: unless-stopped
     # Authentication is required (allow_anonymous false). Users and their
-    # topic permissions are in configuration/mosquitto/config/acl; passwords
+    # topic permissions are in configuration/mosquitto/config/mosquitto.acl; passwords
     # come from the MQTT_*_PASSWORD env vars below (set them in Coolify).
-    entrypoint: ["sh", "/mosquitto/config/init-users.sh"]
+    entrypoint: ["sh", "/mosquitto/config/mosquitto-init.sh"]
     ports:
       - "1883:1883"
     environment:
@@ -71,12 +71,51 @@ services:
           listener 1883
           allow_anonymous false
           password_file /mosquitto/config/passwd
-          acl_file /mosquitto/config/acl
+          acl_file /mosquitto/config/mosquitto.acl
           persistence true
           persistence_location /mosquitto/data/
           log_dest stdout
-      - ./configuration/mosquitto/config/acl:/mosquitto/config/acl:ro
-      - ./configuration/mosquitto/config/init-users.sh:/mosquitto/config/init-users.sh:ro
+      - type: bind
+        source: ./configuration/mosquitto/config/mosquitto.acl
+        target: /mosquitto/config/mosquitto.acl
+        # Keep in sync with configuration/mosquitto/config/mosquitto.acl (single $, Coolify writes content verbatim)
+        content: |
+          # ChirpStack network server: full access (incl. $SYS for the healthcheck).
+          user chirpstack
+          topic readwrite #
+          topic read $SYS/#
+
+          # Gateway bridge: only gateway topics (region AS923-1 = "as923/" prefix).
+          user gateway-bridge
+          topic readwrite as923/gateway/#
+
+          # ORION Fleet Intelligence: read-only access to application uplinks/events.
+          user orion
+          topic read application/#
+      - type: bind
+        source: ./configuration/mosquitto/config/mosquitto-init.sh
+        target: /mosquitto/config/mosquitto-init.sh
+        # Keep in sync with configuration/mosquitto/config/mosquitto-init.sh (single $, Coolify writes content verbatim)
+        content: |
+          #!/bin/sh
+          # Builds the Mosquitto password file from environment variables on every
+          # start, then hands over to the image's normal entrypoint.
+          set -e
+
+          : "${MQTT_CHIRPSTACK_PASSWORD:?MQTT_CHIRPSTACK_PASSWORD is required}"
+          : "${MQTT_GATEWAY_BRIDGE_PASSWORD:?MQTT_GATEWAY_BRIDGE_PASSWORD is required}"
+          : "${MQTT_ORION_PASSWORD:?MQTT_ORION_PASSWORD is required}"
+
+          PW=/mosquitto/config/passwd
+          rm -f "$PW"
+          touch "$PW"
+          chmod 0700 "$PW"
+          mosquitto_passwd -b "$PW" chirpstack "$MQTT_CHIRPSTACK_PASSWORD"
+          mosquitto_passwd -b "$PW" gateway-bridge "$MQTT_GATEWAY_BRIDGE_PASSWORD"
+          mosquitto_passwd -b "$PW" orion "$MQTT_ORION_PASSWORD"
+          chown mosquitto:mosquitto "$PW"
+
+          exec /docker-entrypoint.sh /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf
       - mosquitto-data:/mosquitto/data
 
   postgres:
