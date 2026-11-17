@@ -32,9 +32,9 @@ services:
       - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
     environment:
       - INTEGRATION__MQTT__AUTH__GENERIC__SERVERS=tcp://mosquitto:1883
-      - INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE=as923_2/gateway/{{ .GatewayID }}/event/{{ .EventType }}
-      - INTEGRATION__MQTT__STATE_TOPIC_TEMPLATE=as923_2/gateway/{{ .GatewayID }}/state/{{ .StateType }}
-      - INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE=as923_2/gateway/{{ .GatewayID }}/command/#
+      - INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE=as923/gateway/{{ .GatewayID }}/event/{{ .EventType }}
+      - INTEGRATION__MQTT__STATE_TOPIC_TEMPLATE=as923/gateway/{{ .GatewayID }}/state/{{ .StateType }}
+      - INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE=as923/gateway/{{ .GatewayID }}/command/#
     depends_on:
       mosquitto:
         condition: service_healthy

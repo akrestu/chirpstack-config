@@ -50,7 +50,7 @@
 
   # Enabled regions.
   enabled_regions=[
-    "as923_2",
+    "as923",
   ]
 
 

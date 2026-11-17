@@ -161,8 +161,8 @@ After deploying, also change the default ChirpStack UI login (`admin`/`admin`).
 
 ## Region
 
-Only `as923_2` (Indonesia) is enabled in `chirpstack.toml`, and the gateway
-bridge publishes to `as923_2/gateway/...` topics. If you change region, update
+Only `as923` (AS923-1, matching the deployed devices) is enabled in `chirpstack.toml`, and the gateway
+bridge publishes to `as923/gateway/...` topics. If you change region, update
 **both** `enabled_regions` and the `INTEGRATION__MQTT__*_TOPIC_TEMPLATE` vars
 in `docker-compose.yml`, or uplinks will be silently dropped.
 
