@@ -135,3 +135,48 @@ your own domain:
 Do the same for `chirpstack-gateway-bridge` and `mosquitto` domains if you
 want them reachable externally over HTTPS (not required for MQTT/UDP traffic,
 which uses raw TCP/UDP ports `1883`/`1700` directly).
+
+## Required environment variables
+
+Set these in Coolify → resource → **Environment Variables** (never commit them):
+
+| Variable | Purpose |
+|---|---|
+| `CHIRPSTACK_API_SECRET` | JWT signing secret. Generate with `openssl rand -base64 32`. Deploy fails if unset. |
+| `POSTGRES_PASSWORD` | Postgres password for the `chirpstack` role. Defaults to `chirpstack` only for backward compatibility. |
+
+`chirpstack.toml` reads both via ChirpStack's `$VAR` substitution.
+
+### Rotating the Postgres password on an existing deployment
+
+`POSTGRES_PASSWORD` is only applied when the data volume is first created.
+To change it on a running system, first change it inside the database, then
+set the same value in Coolify and redeploy:
+
+```bash
+docker exec -it <postgres-container> psql -U chirpstack -c "ALTER USER chirpstack WITH PASSWORD '<new-password>';"
+```
+
+After deploying, also change the default ChirpStack UI login (`admin`/`admin`).
+
+## Region
+
+Only `as923_2` (Indonesia) is enabled in `chirpstack.toml`, and the gateway
+bridge publishes to `as923_2/gateway/...` topics. If you change region, update
+**both** `enabled_regions` and the `INTEGRATION__MQTT__*_TOPIC_TEMPLATE` vars
+in `docker-compose.yml`, or uplinks will be silently dropped.
+
+## External MQTT access
+
+Mosquitto allows anonymous clients, so port 1883 is **not** published to the
+host. ChirpStack and the gateway bridge reach it over the internal Docker
+network. If an external system needs MQTT, enable authentication first
+(`allow_anonymous false` + `password_file`, ideally TLS on 8883) in both
+`configuration/mosquitto/config/mosquitto.conf` and the `content:` block in
+`docker-compose.yml`, and give ChirpStack and the bridge credentials.
+
+## Backups
+
+Use Coolify's scheduled backups (or `pg_dump`) for the `postgresql-data`
+volume. The `redis-data` volume holds device session state and should be
+backed up too.

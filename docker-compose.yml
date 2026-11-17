@@ -9,16 +9,19 @@ services:
       - ./configuration/chirpstack:/etc/chirpstack
       - chirpstack-data:/var/lib/chirpstack
     depends_on:
-      - postgres
-      - redis
-      - mosquitto
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_healthy
     environment:
       - MQTT_BROKER_HOST=mosquitto
       - REDIS_HOST=redis
       - POSTGRESQL_HOST=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-chirpstack}
+      - CHIRPSTACK_API_SECRET=${CHIRPSTACK_API_SECRET:?Set CHIRPSTACK_API_SECRET (openssl rand -base64 32)}
       - SERVICE_FQDN_CHIRPSTACK_8080
-    labels:
-      - "coolify.managed=true"
 
   chirpstack-gateway-bridge:
     image: chirpstack/chirpstack-gateway-bridge:4
@@ -29,18 +32,31 @@ services:
       - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
     environment:
       - INTEGRATION__MQTT__AUTH__GENERIC__SERVERS=tcp://mosquitto:1883
+      - INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE=as923_2/gateway/{{ .GatewayID }}/event/{{ .EventType }}
+      - INTEGRATION__MQTT__STATE_TOPIC_TEMPLATE=as923_2/gateway/{{ .GatewayID }}/state/{{ .StateType }}
+      - INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE=as923_2/gateway/{{ .GatewayID }}/command/#
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_healthy
 
   mosquitto:
     image: eclipse-mosquitto:2
     restart: unless-stopped
-    ports:
-      - "1883:1883"
+    # 1883 is intentionally NOT published to the host: anonymous access is
+    # only safe on the internal Docker network. See COOLIFY_DEPLOYMENT.md
+    # ("External MQTT access") before exposing it.
+    expose:
+      - "1883"
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/broker/uptime", "-C", "1", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - type: bind
         source: ./configuration/mosquitto/config/mosquitto.conf
         target: /mosquitto/config/mosquitto.conf
+        # Keep in sync with configuration/mosquitto/config/mosquitto.conf
         content: |
           listener 1883
           allow_anonymous true
@@ -52,27 +68,39 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chirpstack -d chirpstack"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - postgresql-data:/var/lib/postgresql/data
       - type: bind
         source: ./configuration/postgresql/initdb/001-chirpstack_extensions.sh
         target: /docker-entrypoint-initdb.d/001-chirpstack_extensions.sh
+        # Keep in sync with configuration/postgresql/initdb/001-chirpstack_extensions.sh
+        # Note: Coolify writes content verbatim, so use a single $ (not $$).
         content: |
           #!/bin/bash
           set -e
 
           psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname="$POSTGRES_DB" <<-EOSQL
-              create extension pg_trgm;
-              create extension hstore;
+              create extension if not exists pg_trgm;
+              create extension if not exists hstore;
           EOSQL
     environment:
       - POSTGRES_USER=chirpstack
-      - POSTGRES_PASSWORD=chirpstack
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-chirpstack}
       - POSTGRES_DB=chirpstack
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - redis-data:/data
 
