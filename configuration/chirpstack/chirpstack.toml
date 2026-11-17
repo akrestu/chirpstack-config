@@ -48,6 +48,11 @@
   # Network identifier (NetID, 3 bytes) encoded as HEX (e.g. 010203).
   net_id="000000"
 
+  # REGION: this deployment uses AS923-1 (ChirpStack id "as923"), NOT AS923-2.
+  # It must match in 3 places or uplinks are silently dropped:
+  #   1. enabled_regions below
+  #   2. INTEGRATION__MQTT__*_TOPIC_TEMPLATE prefixes in docker-compose.yml ("as923/")
+  #   3. the gateway's Channel Plan (SenseCAP M2: AS923-1)
   # Enabled regions.
   enabled_regions=[
     "as923",
