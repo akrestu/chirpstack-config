@@ -173,6 +173,40 @@
     max_dr=5
 
 
+    # Extra uplink channels, sent to devices in the JoinAccept CFList.
+    # Must match the gateway's 8-channel plan (SenseCAP M2, AS923-1:
+    # 923.2-924.6 MHz). 923.2 / 923.4 are the AS923 default channels.
+    [[regions.network.extra_channels]]
+      frequency=923600000
+      min_dr=0
+      max_dr=5
+
+    [[regions.network.extra_channels]]
+      frequency=923800000
+      min_dr=0
+      max_dr=5
+
+    [[regions.network.extra_channels]]
+      frequency=924000000
+      min_dr=0
+      max_dr=5
+
+    [[regions.network.extra_channels]]
+      frequency=924200000
+      min_dr=0
+      max_dr=5
+
+    [[regions.network.extra_channels]]
+      frequency=924400000
+      min_dr=0
+      max_dr=5
+
+    [[regions.network.extra_channels]]
+      frequency=924600000
+      min_dr=0
+      max_dr=5
+
+
     # Rejoin-request configuration (LoRaWAN 1.1)
     [regions.network.rejoin_request]
 
